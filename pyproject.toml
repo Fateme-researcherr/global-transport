@@ -1,0 +1,41 @@
+[project]
+name = "global-transport"
+version = "0.1.0"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "torch==2.8.0",
+    "torchvision==0.23.0",
+    "ninja",
+    "packaging",
+    "psutil",
+    "flash-attn",
+    "flash-attn-3",
+    "diffusers",
+    "transformers",
+    "timm",
+    "tqdm",
+    "accelerate",
+    "wandb",
+    "requests",
+    "clip",
+    "ftfy",
+    "regex",
+    "einops",
+    "scipy",
+    "peft",
+    "pytest",
+    "matplotlib>=3.10.9",
+]
+
+[tool.uv.sources]
+# Prebuilt CUDA wheels -> no compilation on the cluster.
+# These are built against torch 2.8 + cu12.8 with C++11 ABI = TRUE (matches the
+# default PyPI torch 2.8.0 wheel). If you hit an "undefined symbol" ImportError,
+# switch to the cxx11abiFALSE variant of flash-attn.
+#
+# FA2 (provides flash_attn_2_cuda) -- official Dao-AILab wheel, cp312:
+flash-attn = { url = "https://github.com/Dao-AILab/flash-attention/releases/download/v2.8.3/flash_attn-2.8.3%2Bcu12torch2.8cxx11abiTRUE-cp312-cp312-linux_x86_64.whl" }
+# FA3 (provides flash_attn_3) -- third-party prebuilt (Dao-AILab ships no FA3 wheels);
+# cp39-abi3 so it installs on 3.12:
+flash-attn-3 = { url = "https://github.com/windreamer/flash-attention3-wheels/releases/download/2026.05.20-072445f/flash_attn_3-3.0.0%2B20260519.cu128torch280cxx11abitrue.8a8b2f-cp39-abi3-linux_x86_64.whl" }
+clip = { git = "https://github.com/openai/CLIP.git" }

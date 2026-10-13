@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv*/
+
+# Outputs of examples/fab4_notebook.ipynb (checkpoints, saved figures, downloaded fonts), relative to
+# the directory the notebook is run from
+notebook_results/
+paper/
+fonts/
+
+# Experiment outputs
+exps/
+samples/
+wandb/
+logs/
+results/
+/ckpt/
+preprocessing/ckpt/

@@ -36,8 +36,10 @@ def worker(outdir):
 
         x0, x1, c = make_batch()
         b = BATCH // WORLD_SIZE
-        sl = slice(accelerator.process_index * b,
-                   (accelerator.process_index + 1) * b)
+        sl = slice(
+            accelerator.process_index * b,
+            (accelerator.process_index + 1) * b,
+        )
         sampler = OTPlanSampler()
 
         ot = sampler.sample_plan_with_scipy_global(
@@ -49,8 +51,10 @@ def worker(outdir):
         assert ot.shape == x1[sl].shape
         assert ccot.shape == x1[sl].shape
 
-        torch.save({"ot": ot, "ccot": ccot},
-                   os.path.join(outdir, f"rank{accelerator.process_index}.pt"))
+        torch.save(
+            {"ot": ot, "ccot": ccot},
+            os.path.join(outdir, f"rank{accelerator.process_index}.pt"),
+        )
         accelerator.wait_for_everyone()
     finally:
         if torch.distributed.is_initialized():
@@ -69,11 +73,19 @@ def distributed_outputs(tmp_path_factory):
         "--standalone", f"--nproc_per_node={WORLD_SIZE}",
         os.path.abspath(__file__), outdir,
     ]
-    env = dict(os.environ, CUDA_VISIBLE_DEVICES="",
-               OMP_NUM_THREADS="1", MKL_NUM_THREADS="1")
+    env = dict(
+        os.environ,
+        CUDA_VISIBLE_DEVICES="",
+        OMP_NUM_THREADS="1",
+        MKL_NUM_THREADS="1",
+    )
     proc = subprocess.Popen(
-        cmd, env=env, stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT, text=True, start_new_session=True,
+        cmd,
+        env=env,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        start_new_session=True,
     )
     try:
         log, _ = proc.communicate(timeout=TIMEOUT)
@@ -84,7 +96,10 @@ def distributed_outputs(tmp_path_factory):
 
     assert proc.returncode == 0, f"Worker failure:\n{log}"
     outputs = [
-        torch.load(os.path.join(outdir, f"rank{r}.pt"), weights_only=True)
+        torch.load(
+            os.path.join(outdir, f"rank{r}.pt"),
+            weights_only=True,
+        )
         for r in range(WORLD_SIZE)
     ]
     return {
@@ -112,10 +127,14 @@ def test_global_ot_matches_single_process(distributed_outputs):
     indices = recover_indices(distributed_outputs["ot"], x1)
     matrix = torch.cdist(x0.flatten(1), x1.flatten(1)) ** 2
     reference = torch.as_tensor(
-        OTPlanSampler().sample_plan_with_scipy(x0, x1), dtype=torch.long
+        OTPlanSampler().sample_plan_with_scipy(x0, x1),
+        dtype=torch.long,
     )
     assert cost(matrix, indices) == pytest.approx(
         cost(matrix, reference), rel=1e-5
+    )
+    assert torch.equal(indices, reference), (
+        "OT assignment differs from single-process reference"
     )
 
 
@@ -129,6 +148,9 @@ def test_global_ccot_matches_single_process(distributed_outputs):
     )
     assert cost(matrix, indices) == pytest.approx(
         cost(matrix, reference), rel=1e-5
+    )
+    assert torch.equal(indices, reference), (
+        "CCOT assignment differs from single-process reference"
     )
 
 

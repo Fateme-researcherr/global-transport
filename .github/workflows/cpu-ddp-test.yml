@@ -1,0 +1,28 @@
+
+name: CPU DDP regression test
+
+on:
+  push:
+    branches:
+      - cpu-ddp-test
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install CPU PyTorch
+        run: pip install torch --index-url https://download.pytorch.org/whl/cpu
+
+      - name: Install test dependencies
+        run: pip install numpy scipy accelerate pytest
+
+      - name: Run distributed CPU tests
+        run: python -m pytest tests/test_ddp_cpu_equivalence.py -v

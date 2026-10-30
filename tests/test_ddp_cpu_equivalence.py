@@ -1,5 +1,5 @@
 
-"""CPU multi-process regression test for global OT and CCOT."""
+"""CPU multi-process regression tests for global OT and CCOT."""
 import os
 import signal
 import subprocess
@@ -48,6 +48,7 @@ def worker(outdir):
         ccot = sampler.sample_conditional_plan_with_scipy_global(
             x0[sl], x1[sl], c[sl], accelerator
         )
+
         assert ot.shape == x1[sl].shape
         assert ccot.shape == x1[sl].shape
 
@@ -69,9 +70,13 @@ def distributed_outputs(tmp_path_factory):
 
     outdir = str(tmp_path_factory.mktemp("ddp_ot"))
     cmd = [
-        sys.executable, "-m", "torch.distributed.run",
-        "--standalone", f"--nproc_per_node={WORLD_SIZE}",
-        os.path.abspath(__file__), outdir,
+        sys.executable,
+        "-m",
+        "torch.distributed.run",
+        "--standalone",
+        f"--nproc_per_node={WORLD_SIZE}",
+        os.path.abspath(__file__),
+        outdir,
     ]
     env = dict(
         os.environ,
@@ -95,6 +100,7 @@ def distributed_outputs(tmp_path_factory):
         pytest.fail(f"Workers timed out\n{log}")
 
     assert proc.returncode == 0, f"Worker failure:\n{log}"
+
     outputs = [
         torch.load(
             os.path.join(outdir, f"rank{r}.pt"),
@@ -110,11 +116,16 @@ def distributed_outputs(tmp_path_factory):
 
 def recover_indices(output, x1):
     distances = torch.cdist(
-        output.reshape(BATCH, -1), x1.reshape(BATCH, -1)
+        output.reshape(BATCH, -1),
+        x1.reshape(BATCH, -1),
     )
     indices = distances.argmin(dim=1)
-    assert torch.equal(x1[indices], output)
-    assert torch.equal(indices.sort().values, torch.arange(BATCH))
+    assert torch.equal(x1[indices], output), (
+        "Output contains rows not present in the noise batch"
+    )
+    assert torch.equal(indices.sort().values, torch.arange(BATCH)), (
+        "Output is not a permutation of the noise batch"
+    )
     return indices
 
 
@@ -126,10 +137,12 @@ def test_global_ot_matches_single_process(distributed_outputs):
     x0, x1, _ = make_batch()
     indices = recover_indices(distributed_outputs["ot"], x1)
     matrix = torch.cdist(x0.flatten(1), x1.flatten(1)) ** 2
+
     reference = torch.as_tensor(
         OTPlanSampler().sample_plan_with_scipy(x0, x1),
         dtype=torch.long,
     )
+
     assert cost(matrix, indices) == pytest.approx(
         cost(matrix, reference), rel=1e-5
     )
@@ -142,10 +155,12 @@ def test_global_ccot_matches_single_process(distributed_outputs):
     x0, x1, c = make_batch()
     indices = recover_indices(distributed_outputs["ccot"], x1)
     matrix = OTPlanSampler.conditional_cost(x0, x1, c)
+
     reference = torch.as_tensor(
         OTPlanSampler().sample_conditional_plan_with_scipy(x0, x1, c),
         dtype=torch.long,
     )
+
     assert cost(matrix, indices) == pytest.approx(
         cost(matrix, reference), rel=1e-5
     )
